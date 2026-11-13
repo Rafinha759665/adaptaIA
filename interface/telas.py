@@ -454,15 +454,57 @@ class TelaCriacao(ctk.CTkFrame):
             pady=(10, 5)
         )
 
-        self.atividade_original = ctk.CTkTextbox(
+        linha_atividade_original = ctk.CTkFrame(
             formulario,
-            height=120
+            fg_color="transparent"
         )
 
-        self.atividade_original.grid(
+        linha_atividade_original.grid(
             row=19,
             column=0,
             sticky="ew",
+            pady=(0, 10)
+        )
+
+        linha_atividade_original.grid_columnconfigure(
+            0,
+            weight=1
+        )
+
+        self.caminho_atividade_original = ctk.CTkEntry(
+            linha_atividade_original,
+            placeholder_text="Nenhuma atividade original selecionada"
+        )
+
+        self.caminho_atividade_original.grid(
+            row=0,
+            column=0,
+            sticky="ew",
+            padx=(0, 10)
+        )
+
+        ctk.CTkButton(
+            linha_atividade_original,
+            text="Selecionar PDF",
+            width=150,
+            command=self.selecionar_atividade_original
+        ).grid(
+            row=0,
+            column=1
+        )
+
+        ctk.CTkLabel(
+            formulario,
+            text=(
+                "Envie a atividade que deseja adaptar. "
+                "O sistema irá extrair o texto do PDF e enviá-lo à IA."
+            ),
+            wraplength=800,
+            justify="left"
+        ).grid(
+            row=20,
+            column=0,
+            sticky="w",
             pady=(0, 10)
         )
 
@@ -474,7 +516,7 @@ class TelaCriacao(ctk.CTkFrame):
             formulario,
             text="Documento / laudo pedagógico:"
         ).grid(
-            row=20,
+            row=21,
             column=0,
             sticky="w",
             pady=(10, 5)
@@ -486,7 +528,7 @@ class TelaCriacao(ctk.CTkFrame):
         )
 
         linha_documento.grid(
-            row=21,
+            row=22,
             column=0,
             sticky="ew",
             pady=(0, 10)
@@ -529,7 +571,7 @@ class TelaCriacao(ctk.CTkFrame):
         )
 
         botoes.grid(
-            row=22,
+            row=23,
             column=0,
             pady=25
         )
@@ -664,6 +706,32 @@ class TelaCriacao(ctk.CTkFrame):
         )
 
     # ========================================================
+    # SELECIONAR ATIVIDADE ORIGINAL
+    # ========================================================
+
+    def selecionar_atividade_original(self):
+
+        caminho = filedialog.askopenfilename(
+            title="Selecionar atividade original",
+            filetypes=[
+                ("PDF", "*.pdf"),
+                ("Todos os arquivos", "*.*")
+            ]
+        )
+
+        if caminho:
+
+            self.caminho_atividade_original.delete(
+                0,
+                "end"
+            )
+
+            self.caminho_atividade_original.insert(
+                0,
+                caminho
+            )
+
+    # ========================================================
     # SELECIONAR DOCUMENTO
     # ========================================================
 
@@ -739,6 +807,35 @@ class TelaCriacao(ctk.CTkFrame):
 
                 break
 
+        # ====================================================
+        # LEITURA DA ATIVIDADE ORIGINAL
+        # ====================================================
+
+        atividade_original = ""
+
+        caminho_atividade_original = (
+            self.caminho_atividade_original.get().strip()
+        )
+
+        if caminho_atividade_original:
+
+            resultado_atividade = ler_documento(
+                caminho_atividade_original
+            )
+
+            if resultado_atividade["sucesso"]:
+
+                atividade_original = (
+                    resultado_atividade["texto"]
+                )
+
+            else:
+
+                messagebox.showwarning(
+                    "Atividade original",
+                    resultado_atividade["mensagem"]
+                )
+
         dados = {
 
             "ano": self.ano.get(),
@@ -761,10 +858,7 @@ class TelaCriacao(ctk.CTkFrame):
                 "end"
             ).strip(),
 
-            "atividade_original": self.atividade_original.get(
-                "1.0",
-                "end"
-            ).strip(),
+            "atividade_original": atividade_original,
 
             "caminho_documento": self.caminho_documento.get(),
 
@@ -949,8 +1043,7 @@ class TelaRevisao(ctk.CTkFrame):
             texto_atualizado
         )
 
-
-# ============================================================
+        # ============================================================
 # TELA DE NECESSIDADES PEDAGÓGICAS
 # ============================================================
 
@@ -1473,3 +1566,5 @@ class TelaResultado(ctk.CTkFrame):
             self.gerar_nova_versao(
                 self.atividade
             )
+
+            

@@ -1,8 +1,12 @@
+
 from google import genai
+from google.genai import errors
 
 from config.settings import GEMINI_MODEL
 from documentos.chave_gemini import obter_chave
 from modelos.atividade import Atividade
+
+import time
 
 
 def criar_cliente():
@@ -264,20 +268,61 @@ NÃO altere o tipo de atividade.
 def gerar_atividade(atividade: Atividade) -> str:
     """
     Envia a atividade para o Gemini e retorna o resultado.
+
+    Caso o Gemini esteja temporariamente indisponível
+    (erro 503), realiza novas tentativas automaticamente.
     """
 
     cliente = criar_cliente()
 
     prompt = montar_prompt(atividade)
 
-    resposta = cliente.models.generate_content(
-        model=GEMINI_MODEL,
-        contents=prompt
-    )
+    max_tentativas = 3
 
-    if not resposta.text:
-        raise ValueError(
-            "O Gemini não retornou nenhum conteúdo."
-        )
+    for tentativa in range(1, max_tentativas + 1):
 
-    return resposta.text.strip()
+        try:
+
+            resposta = cliente.models.generate_content(
+                model=GEMINI_MODEL,
+                contents=prompt
+            )
+
+            if not resposta.text:
+                raise ValueError(
+                    "O Gemini não retornou nenhum conteúdo."
+                )
+
+            return resposta.text.strip()
+
+        except errors.ServerError as erro:
+
+            # O erro 503 indica que o servidor do Gemini
+            # está temporariamente indisponível ou
+            # sobrecarregado.
+            if erro.code != 503:
+                raise
+
+            # Se ainda houver tentativas disponíveis,
+            # espera antes de tentar novamente.
+            if tentativa < max_tentativas:
+
+                tempo_espera = 5 * tentativa
+
+                time.sleep(tempo_espera)
+
+            else:
+
+                raise RuntimeError(
+                    "O serviço de Inteligência Artificial "
+                    "está temporariamente sobrecarregado.\n\n"
+                    "O Gemini não conseguiu processar a "
+                    "atividade após algumas tentativas.\n\n"
+                    "Aguarde alguns instantes e tente "
+                    "novamente."
+                )
+
+        except Exception:
+            # Outros erros continuam sendo tratados
+            # normalmente pelo restante do sistema.
+            raise
